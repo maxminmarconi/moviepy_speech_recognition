@@ -40,7 +40,7 @@ class SubtitleConverter:
             # 如果没有指定输出文件，自动生成输出文件名
             if not output_file:
                 base_name = os.path.splitext(input_file)[0]
-                output_file = f"{base_name}_纯文本_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                output_file = f"{base_name}_纯文本.txt"
             
             pure_text_lines = []
             current_text = []
