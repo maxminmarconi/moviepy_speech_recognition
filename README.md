@@ -25,7 +25,7 @@ pip install yt-dlp
 
 2. 下载项目：
 ```bash
-git clone https://github.com/yourusername/video-subtitle-extractor.git
+git clone https://github.com/maxminmarconi/video-subtitle-extractor.git
 cd video-subtitle-extractor
 ```
 
