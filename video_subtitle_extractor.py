@@ -104,7 +104,15 @@ class SubtitleExtractor:
                 return None
 
             # 优先使用手动字幕，其次是自动字幕
-            lang_code = (video_info['manual_subtitles'] or video_info['auto_subtitles'])[0]
+            lang_code = None
+            for code in ['zh-Hans', 'zh', 'en']:
+                if code in video_info['manual_subtitles']:
+                    lang_code = code
+                    break
+                elif code in video_info['auto_subtitles']:
+                    lang_code = code
+                    break
+            #lang_code = (video_info['manual_subtitles'] or video_info['auto_subtitles'])[0]
             self.ydl_opts['subtitleslangs'] = [lang_code]
             
             # 下载字幕

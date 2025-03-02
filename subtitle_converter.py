@@ -13,12 +13,15 @@ class SubtitleConverter:
         srt_pattern = r'^\d{2}:\d{2}:\d{2},\d{3}\s*-->\s*\d{2}:\d{2}:\d{2},\d{3}$'
         # 匹配 VTT 格式时间轴: 00:00:00.000 --> 00:00:00.000
         vtt_pattern = r'^\d{2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}$'
+        # 匹配 格式时间轴：00:00:00.280 --> 00:00:02.550 align:start position:0%
+        complex_pattern = r'^\d{2}:\d{2}:\d{2}\.\d{3}\s*-->\s*\d{2}:\d{2}:\d{2}\.\d{3}\s*align:start\s*position:\d+%$'
         # 匹配简单时间格式: [00:00] 或 (01:23)
         simple_pattern = r'^\[?\(?\d{2}:\d{2}\]?\)?$'
         
         return bool(
             re.match(srt_pattern, line) or 
             re.match(vtt_pattern, line) or 
+            re.match(complex_pattern, line) or 
             re.match(simple_pattern, line)
         )
     
