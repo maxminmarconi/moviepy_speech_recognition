@@ -40,6 +40,7 @@ class SubtitleExtractor:
                 
                 return {
                     'supported': True,
+                    'id': info.get('id', 'unknown_id'),
                     'title': info.get('title', 'unknown_video'),
                     'platform': info.get('extractor', 'unknown_platform'),
                     'duration': info.get('duration', 0),
@@ -109,7 +110,8 @@ class SubtitleExtractor:
             # 下载字幕
             with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
                 ydl.download([video_url])
-            
+            print("\下载字幕结束，开始本地处理")
+
             # 查找并处理字幕文件
             subtitle_file = self._find_subtitle_file()
             if subtitle_file:
@@ -119,7 +121,7 @@ class SubtitleExtractor:
                 
                 # 保存原始字幕和纯文本字幕
                 original_file = self.save_file(subtitle_content, 
-                                            f"{video_info['title']}_原始字幕", 
+                                            f"{video_info['id']}_原始字幕", 
                                             '.srt')
                 
                 # 使用字幕转换器提取纯文本
