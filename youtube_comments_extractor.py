@@ -4,9 +4,10 @@ from datetime import datetime
 import json
 
 class YouTubeCommentsExtractor:
-    def __init__(self):
+    def __init__(self, timestamp):
         # 创建输出目录
         self.output_dir = 'out'
+        self.timestamp = timestamp
         if not os.path.exists(self.output_dir):
             os.makedirs(self.output_dir)
         
@@ -21,8 +22,7 @@ class YouTubeCommentsExtractor:
     
     def save_comments(self, comments, filename):
         """保存评论到文件"""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = os.path.join(self.output_dir, f"{filename}_评论_{timestamp}.txt")
+        output_file = os.path.join(self.output_dir, f"{filename}_评论_{self.timestamp}.txt")
         
         with open(output_file, 'w', encoding='utf-8') as f:
             for comment in comments:
@@ -40,8 +40,7 @@ class YouTubeCommentsExtractor:
     
     def save_comments_json(self, comments, filename):
         """保存评论到JSON文件"""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = os.path.join(self.output_dir, f"{filename}_评论_{timestamp}.json")
+        output_file = os.path.join(self.output_dir, f"{filename}_评论_{self.timestamp}.json")
         
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(comments, f, ensure_ascii=False, indent=2)
@@ -105,6 +104,7 @@ class YouTubeCommentsExtractor:
                 return {
                     'txt_file': txt_file,
                     'json_file': json_file,
+                    'comments': comments,
                     'comments_count': len(comments)
                 }
                 

@@ -14,8 +14,9 @@ class SubtitleExtractor:
             'quiet': True,
             'no_warnings': True
         }
+        self.timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.converter = SubtitleConverter()
-        self.comments_extractor = YouTubeCommentsExtractor()  # 添加评论提取器
+        self.comments_extractor = YouTubeCommentsExtractor(self.timestamp)  # 添加评论提取器
         # 创建输出目录
         self.output_dir = 'out'
         if not os.path.exists(self.output_dir):
@@ -23,8 +24,7 @@ class SubtitleExtractor:
     
     def save_file(self, content, filename, ext='.txt'):
         """统一的文件保存方法"""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = os.path.join(self.output_dir, f"{filename}_{timestamp}{ext}")
+        output_file = os.path.join(self.output_dir, f"{filename}_{self.timestamp}{ext}")
         with open(output_file, 'w', encoding='utf-8') as f:
             f.write(content)
         return output_file
@@ -90,25 +90,10 @@ class SubtitleExtractor:
     
     def save_combined_output(self, video_info, subtitle_text, comments):
         """保存合并的字幕和评论信息"""
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_file = os.path.join(self.output_dir, f"{video_info['id']}_完整内容_{timestamp}.txt")
+        output_file = os.path.join(self.output_dir, f"{video_info['id']}_完整内容_{self.timestamp}.txt")
         
         try:
             with open(output_file, 'w', encoding='utf-8') as f:
-                # 写入视频信息
-                f.write("=" * 50 + "\n")
-                f.write("视频信息\n")
-                f.write("=" * 50 + "\n")
-                f.write(f"标题: {video_info['title']}\n")
-                f.write(f"平台: {video_info['platform']}\n")
-                f.write(f"时长: {self.format_duration(video_info['duration'])}\n")
-                f.write(f"链接: {video_info['webpage_url']}\n\n")
-                
-                # 写入字幕信息
-                f.write("字幕信息:\n")
-                f.write(f"手动字幕: {', '.join(video_info['manual_subtitles']) if video_info['manual_subtitles'] else '无'}\n")
-                f.write(f"自动字幕: {', '.join(video_info['auto_subtitles']) if video_info['auto_subtitles'] else '无'}\n\n")
-                
                 # 写入字幕内容
                 if subtitle_text:
                     f.write("=" * 50 + "\n")
@@ -278,10 +263,6 @@ def main():
             print("\n无法获取任何内容")
         elif result['combined']:
             print(f"\n所有内容已合并保存到: {result['combined']}")
-        
-        if input("\n是否继续？(y/n): ").lower() != 'y':
-            print("程序已退出")
-            break
 
 if __name__ == "__main__":
     main() 
