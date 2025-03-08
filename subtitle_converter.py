@@ -69,12 +69,16 @@ class SubtitleConverter:
                         text = ' '.join(current_text)
                         # 去除特殊标记，如<c>等
                         text = re.sub(r'<[^>]+>', '', text)
+                        # 替换HTML实体字符
+                        text = self._replace_html_entities(text)
                         pure_text_lines.append(text)
                         current_text = []
                     continue
                 
                 # 去除特殊标记
                 line = re.sub(r'<[^>]+>', '', line)
+                # 替换HTML实体字符
+                line = self._replace_html_entities(line)
                 if line:
                     current_text.append(line)
             
@@ -82,6 +86,7 @@ class SubtitleConverter:
             if current_text:
                 text = ' '.join(current_text)
                 text = re.sub(r'<[^>]+>', '', text)
+                text = self._replace_html_entities(text)
                 pure_text_lines.append(text)
             
             # 写入输出文件
@@ -101,6 +106,35 @@ class SubtitleConverter:
                 'error': str(e),
                 'input_file': input_file
             }
+    
+    def _replace_html_entities(self, text):
+        """替换HTML实体字符"""
+        # 替换常见的HTML实体字符
+        html_entities = {
+            '&nbsp;': ' ',    # 不间断空格
+            '&amp;': '&',     # &符号
+            '&lt;': '<',      # 小于号
+            '&gt;': '>',      # 大于号
+            '&quot;': '"',    # 双引号
+            '&apos;': "'",    # 单引号
+            '&#39;': "'",     # 单引号的另一种写法
+            '&ldquo;': '"',   # 左双引号
+            '&rdquo;': '"',   # 右双引号
+            '&lsquo;': ''',   # 左单引号
+            '&rsquo;': ''',   # 右单引号
+            '&hellip;': '…',  # 省略号
+            '&mdash;': '—',   # 破折号
+            '&ndash;': '–',   # 连字符
+        }
+        
+        # 替换所有已知的HTML实体字符
+        for entity, char in html_entities.items():
+            text = text.replace(entity, char)
+        
+        # 处理数字实体字符 (如 &#160;)
+        text = re.sub(r'&#(\d+);', lambda m: chr(int(m.group(1))), text)
+        
+        return text
     
     def batch_convert(self, input_dir, output_dir=None):
         """批量转换目录下的所有字幕文件"""

@@ -2,6 +2,7 @@ import yt_dlp
 import os
 from datetime import datetime
 from subtitle_converter import SubtitleConverter
+from youtube_comments_extractor import YouTubeCommentsExtractor
 
 class SubtitleExtractor:
     def __init__(self):
@@ -14,6 +15,7 @@ class SubtitleExtractor:
             'no_warnings': True
         }
         self.converter = SubtitleConverter()
+        self.comments_extractor = YouTubeCommentsExtractor()  # 添加评论提取器
         # 创建输出目录
         self.output_dir = 'out'
         if not os.path.exists(self.output_dir):
@@ -86,8 +88,61 @@ class SubtitleExtractor:
         else:
             return f"{int(seconds)}秒"
     
+    def save_combined_output(self, video_info, subtitle_text, comments):
+        """保存合并的字幕和评论信息"""
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_file = os.path.join(self.output_dir, f"{video_info['id']}_完整内容_{timestamp}.txt")
+        
+        try:
+            with open(output_file, 'w', encoding='utf-8') as f:
+                # 写入视频信息
+                f.write("=" * 50 + "\n")
+                f.write("视频信息\n")
+                f.write("=" * 50 + "\n")
+                f.write(f"标题: {video_info['title']}\n")
+                f.write(f"平台: {video_info['platform']}\n")
+                f.write(f"时长: {self.format_duration(video_info['duration'])}\n")
+                f.write(f"链接: {video_info['webpage_url']}\n\n")
+                
+                # 写入字幕信息
+                f.write("字幕信息:\n")
+                f.write(f"手动字幕: {', '.join(video_info['manual_subtitles']) if video_info['manual_subtitles'] else '无'}\n")
+                f.write(f"自动字幕: {', '.join(video_info['auto_subtitles']) if video_info['auto_subtitles'] else '无'}\n\n")
+                
+                # 写入字幕内容
+                if subtitle_text:
+                    f.write("=" * 50 + "\n")
+                    f.write("字幕内容\n")
+                    f.write("=" * 50 + "\n")
+                    f.write(subtitle_text + "\n\n")
+                
+                # 写入评论信息
+                if comments:
+                    f.write("评论统计:\n")
+                    f.write(f"评论总数: {comments.get('comments_count', 0)}\n\n")
+                
+                # 写入评论内容
+                if comments and 'comments' in comments:
+                    f.write("=" * 50 + "\n")
+                    f.write("评论内容\n")
+                    f.write("=" * 50 + "\n")
+                    for comment in comments['comments']:
+                        f.write(f"作者: {comment['author']}\n")
+                        f.write(f"时间: {comment['time']}\n")
+                        f.write(f"内容: {comment['text']}\n")
+                        if comment.get('like_count'):
+                            f.write(f"点赞: {comment['like_count']}\n")
+                        if comment.get('reply_count'):
+                            f.write(f"回复数: {comment['reply_count']}\n")
+                        f.write("-" * 50 + "\n")
+            
+            return output_file
+        except Exception as e:
+            print(f"保存合并内容时发生错误: {str(e)}")
+            return None
+    
     def extract_subtitles(self, video_url):
-        """提取视频字幕"""
+        """提取视频字幕和评论"""
         try:
             # 一次性检查视频支持和字幕信息
             video_info = self.check_video(video_url)
@@ -98,55 +153,93 @@ class SubtitleExtractor:
             self._print_video_info(video_info)
             self._print_subtitle_info(video_info)
             
+            result = {
+                'subtitles': None,
+                'comments': None,
+                'combined': None  # 添加合并输出的结果
+            }
+            
             # 检查字幕可用性
             if not video_info['manual_subtitles'] and not video_info['auto_subtitles']:
                 print("\n该视频没有任何可用字幕！")
-                return None
-
-            # 优先使用手动字幕，其次是自动字幕
-            lang_code = None
-            for code in ['zh-Hans', 'zh', 'en']:
-                if code in video_info['manual_subtitles']:
-                    lang_code = code
-                    break
-                elif code in video_info['auto_subtitles']:
-                    lang_code = code
-                    break
-            #lang_code = (video_info['manual_subtitles'] or video_info['auto_subtitles'])[0]
-            self.ydl_opts['subtitleslangs'] = [lang_code]
-            
-            # 下载字幕
-            with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
-                ydl.download([video_url])
-            print("\下载字幕结束，开始本地处理")
-
-            # 查找并处理字幕文件
-            subtitle_file = self._find_subtitle_file()
-            if subtitle_file:
-                # 读取原始字幕
-                with open(subtitle_file, 'r', encoding='utf-8') as f:
-                    subtitle_content = f.read()
+            else:
+                # 优先使用手动字幕，其次是自动字幕
+                lang_code = None
+                for code in ['en','zh', 'zh-Hans']:
+                    if code in video_info['manual_subtitles']:
+                        lang_code = code
+                        break
+                    elif code in video_info['auto_subtitles']:
+                        lang_code = code
+                        break
                 
-                # 保存原始字幕和纯文本字幕
-                original_file = self.save_file(subtitle_content, 
-                                            f"{video_info['id']}_原始字幕", 
-                                            '.srt')
+                self.ydl_opts['subtitleslangs'] = [lang_code]
                 
-                # 使用字幕转换器提取纯文本
-                pure_text = self.converter.extract_pure_text(original_file)
-                if pure_text['success']:
-                    # 删除临时文件
-                    os.remove(subtitle_file)
-                    return {
-                        'original': original_file,
-                        'pure_text': pure_text['output_file']
-                    }
+                # 下载字幕
+                with yt_dlp.YoutubeDL(self.ydl_opts) as ydl:
+                    ydl.download([video_url])
+                print("\n下载字幕结束，开始本地处理")
+
+                # 查找并处理字幕文件
+                subtitle_file = self._find_subtitle_file()
+                if subtitle_file:
+                    # 读取原始字幕
+                    with open(subtitle_file, 'r', encoding='utf-8') as f:
+                        subtitle_content = f.read()
+                    
+                    # 保存原始字幕和纯文本字幕
+                    original_file = self.save_file(subtitle_content, 
+                                                f"{video_info['id']}_原始字幕", 
+                                                '.srt')
+                    
+                    # 使用字幕转换器提取纯文本
+                    pure_text = self.converter.extract_pure_text(original_file)
+                    if pure_text['success']:
+                        # 删除临时文件
+                        os.remove(subtitle_file)
+                        result['subtitles'] = {
+                            'original': original_file,
+                            'pure_text': pure_text['output_file']
+                        }
+                        print(f"\n字幕已保存:")
+                        print(f"原始字幕: {original_file}")
+                        print(f"纯文本字幕: {pure_text['output_file']}")
+                else:
+                    print("\n无法找到下载的字幕文件")
             
-            print("\n无法找到下载的字幕文件")
-            return None
+            # 读取纯文本字幕内容
+            subtitle_text = None
+            if result['subtitles'] and 'pure_text' in result['subtitles']:
+                try:
+                    with open(result['subtitles']['pure_text'], 'r', encoding='utf-8') as f:
+                        subtitle_text = f.read()
+                except Exception as e:
+                    print(f"读取字幕文件时发生错误: {str(e)}")
+            
+            # 获取评论
+            print("\n开始获取评论...")
+            comments = self.comments_extractor.extract_comments(video_url)
+            if comments:
+                result['comments'] = comments
+                print(f"\n评论已保存:")
+                print(f"文本文件: {comments['txt_file']}")
+                print(f"JSON文件: {comments['json_file']}")
+                print(f"评论数量: {comments['comments_count']}")
+            else:
+                print("\n无法获取评论")
+            
+            # 合并输出
+            if subtitle_text or comments:
+                print("\n正在生成完整内容文件...")
+                combined_file = self.save_combined_output(video_info, subtitle_text, comments)
+                if combined_file:
+                    result['combined'] = combined_file
+                    print(f"完整内容已保存到: {combined_file}")
+            
+            return result
             
         except Exception as e:
-            print(f"提取字幕时发生错误: {str(e)}")
+            print(f"处理视频时发生错误: {str(e)}")
             return None
     
     def _print_video_info(self, info):
@@ -178,16 +271,17 @@ def main():
             print("程序已退出")
             break
         
-        # 提取字幕
-        output_files = extractor.extract_subtitles(video_url)
+        # 提取字幕和评论
+        result = extractor.extract_subtitles(video_url)
         
-        if output_files:
-            print(f"\n原始字幕已保存到文件: {output_files['original']}")
-            print(f"纯文本字幕已保存到文件: {output_files['pure_text']}")
-        else:
-            print("\n无法提取字幕")
+        if not result or (not result['subtitles'] and not result['comments']):
+            print("\n无法获取任何内容")
+        elif result['combined']:
+            print(f"\n所有内容已合并保存到: {result['combined']}")
         
-        break
+        if input("\n是否继续？(y/n): ").lower() != 'y':
+            print("程序已退出")
+            break
 
 if __name__ == "__main__":
     main() 
